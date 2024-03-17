@@ -25,7 +25,7 @@ namespace PlayerState
 
         public void OnEnter()
         {
-            self.anim.Play("Idle");
+            self.anim.SetBool("isIdle", true);
             self.interia = Vector3.zero;
         }
 
@@ -39,14 +39,17 @@ namespace PlayerState
             if (self.input.PlayerBasic.Jump.WasPerformedThisFrame())
             {
                 self.TransState(PlayerStateType.Jump);
+                self.anim.SetBool("isIdle", false);
             }
             else if (self.input.PlayerBasic.Attack.WasPerformedThisFrame())
             {
                 self.TransState(PlayerStateType.Attack);
+                self.anim.SetBool("isIdle", false);
             }
             else if(self.input.PlayerBasic.Move.ReadValue<Vector2>().magnitude >= 0.05f)
             {
                 self.TransState(PlayerStateType.Walk);
+                self.anim.SetBool("isIdle", false);
             }
         }
     }
@@ -61,12 +64,12 @@ namespace PlayerState
 
         public void OnEnter()
         {
-            self.anim.Play("Walk");
+            self.anim.SetBool("isWalk", true);
         }
 
         public void OnExit()
         {
-
+            self.anim.SetBool("isWalk", false);
         }
 
         public void OnUpdate()
@@ -113,7 +116,7 @@ namespace PlayerState
         {
             time = 0;
             speed = 20;
-            self.anim.Play("Jump");
+            self.anim.SetTrigger("Jump");
         }
 
         public void OnExit()
@@ -126,10 +129,14 @@ namespace PlayerState
             time += Time.deltaTime;
             speed -= Time.deltaTime * 60f;
             self.characterController.Move(speed * Vector3.up * Time.deltaTime + self.interia * Time.deltaTime * self.date.speed); 
-            if (self.characterController.isGrounded)
+            if (self.characterController.isGrounded && self.input.PlayerBasic.Move.ReadValue<Vector2>().magnitude <= 0.05f)
             {
                 self.TransState(PlayerStateType.Idle);
                 self.characterController.Move(self.interia * Time.deltaTime * self.date.speed);
+            }
+            else if (self.input.PlayerBasic.Move.ReadValue<Vector2>().magnitude > 0.05f && self.characterController.isGrounded)
+            {
+                self.TransState(PlayerStateType.Walk);
             }
         }
     }
@@ -187,9 +194,15 @@ namespace PlayerState
         public void OnUpdate()
         {
             time += Time.deltaTime;
-            if(time > 1f)
+            if(time > 1f && self.input.PlayerBasic.Move.ReadValue<Vector2>().magnitude <= 0.05f)
             {
                 self.TransState(PlayerStateType.Idle);
+                self.combo = 0;
+                self.anim.SetInteger("combo", self.combo);
+            }
+            else if (time > 1f && self.input.PlayerBasic.Move.ReadValue<Vector2>().magnitude > 0.05f)
+            {
+                self.TransState(PlayerStateType.Walk);
                 self.combo = 0;
                 self.anim.SetInteger("combo", self.combo);
             }
@@ -200,10 +213,9 @@ namespace PlayerState
                     if(self.combo < 2)
                     {
                         self.combo++;
+                        time = 0; self.anim.SetInteger("combo", self.combo);
+                        self.TransState(PlayerStateType.Attack);
                     }
-                    self.anim.SetInteger("combo", self.combo);
-                    time = 0;
-                    self.TransState(PlayerStateType.Attack);
                 }
             }
         }
